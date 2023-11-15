@@ -1,4 +1,5 @@
 #include <cstring>
+#include <string.h>
 #include <stdio.h>
 #include <span>
 #include <string>
@@ -39,7 +40,7 @@ class Qstring {
     ReadOnlyString line_to_process;
     std::array<ReadOnlyString, MAX_SPLIT_WORDS> arr_lines_to_process;
     char arr_joining_char[MAX_JOINING_CHAR];
-    std::span<ReadOnlyString> lines_to_process{};
+    SplitWords lines_to_process{};
     SplitWords split_words_result;
     ReadOnlyString strip_default {" \t\n\r"};
     ReadOnlyString &for_stripping {strip_default};
@@ -222,47 +223,43 @@ class Qstring {
         return ReadOnlyString(ppre, ppost-ppre+1);
     };
 
+    int char_count_of_result() {
+        const int no_elements = lines_to_process.size();
+        int array_size = 0;
+        for (const auto &line: lines_to_process) {
+            array_size += line.size();
+        }
+        return array_size+(no_elements-1)*joining_word.size();
+    };
+
     std::string v_join() {
         auto pChar = joined_words;
         int count = 0;
-        int processed_elements = 0;
-        const int no_elements = lines_to_process.size();
-        // std::cout << "v_join called" << std::endl;
+        decltype(lines_to_process.size()) processed_elements = 0;
+        const decltype(lines_to_process.size()) no_elements = lines_to_process.size();
+        // std::cout<< "inside v_join now, no_elements is: " << no_elements << std::endl;
+        if (char_count_of_result() >= MAX_JOINED_CHARACTERS) {
+            std::cout << "Error!!! MAX_JOINED_CHARACTERS exceeded!" << std::endl;
+            exit(1);
+        }
         for (const auto word : lines_to_process) {
-            // std::cout << "about to add word " << word << std::endl;
+            // std::cout<< "processing word " << word << std::endl;
             for (const auto c : word) {
                 *pChar++ = c;
                 ++count;
-                if (count >= MAX_JOINED_CHARACTERS) {
-                    std::cout << "Error!!! MAX_JOINED_CHARACTERS exceeded!" << std::endl;
-                    exit(1);
-                }
             }
-            if (count >= MAX_JOINED_CHARACTERS) {
-                // return std::string(joined_words, MAX_JOINED_CHARACTERS);
-                std::cout << "Error!!! MAX_JOINED_CHARACTERS exceeded!" << std::endl;
-                exit(1);
-            }
-            // std::cout << "after joining word " << std::string_view(joined_words, count) << std::endl;
+            // std::cout<< "so far >>" << std::string_view(joined_words, count) << std::endl;
             if (++processed_elements != no_elements) {
+                // std::cout<< "appending delimit " << joining_word << std::endl;
                 for (const auto c : joining_word) {
                     *pChar++ = c;
                     ++count;
-                    if (count >= MAX_JOINED_CHARACTERS) {
-                        std::cout << "Error!!! MAX_JOINED_CHARACTERS exceeded!" << std::endl;
-                        exit(1);
-                    }
                 }
-                // std::cout << "after joining delimeter " << std::string_view(joined_words, count) << std::endl;
-            }
-            if (count >= MAX_JOINED_CHARACTERS) {
-                // return std::string(joined_words, MAX_JOINED_CHARACTERS);
-                std::cout << "Error!!! MAX_JOINED_CHARACTERS exceeded!" << std::endl;
-                exit(1);
+            // std::cout<< "so far >>" << std::string_view(joined_words, count) << std::endl;
             }
         }
-        // std::cout << "FINALLY:" << std::string_view(joined_words, count) << " count: " << count << std::endl;
-        return std::string(std::string_view(joined_words, count));
+        // std::cout<< "before move >>" << std::string_view(joined_words, count) << std::endl;
+        return std::move(std::string(joined_words, count));
     };
 
     public:
@@ -280,34 +277,30 @@ class Qstring {
         };
 
         Qstring &operator()(const std::vector<const char*> &lines) {
-            // printf("\n\n+++++++++++++++ operator(vector of char*) entered +++++++++++++++++\n\n");
-            decltype(lines.size()) i;
-            for (i=0; i<lines.size(); ++i) {
+            auto lines_size = lines.size();
+            for (decltype(lines_size) i=0; i<lines_size; ++i) {
                 arr_lines_to_process[i] = std::string_view(lines[i]);
-                // std::cout << "arr lines to process " << arr_lines_to_process[i] << std::endl;
             }
-            lines_to_process = std::span(arr_lines_to_process.begin(), i);
-
-            // for (auto const &line : lines) {
-            //     printf("linesi %s\n", line);
-            //     lines_to_process[i] = std::string_view(line);
-            //     std::cout << "lines to process " << lines_to_process[i] << std::endl;
-            //     ++i;
-            // }
+            lines_to_process = SplitWords(arr_lines_to_process.begin(), lines_size);
             return *this;
         };
 
         Qstring &operator()(std::vector<ReadOnlyString> &lines) {
-            lines_to_process = std::span(lines.begin(), lines.size());
+            lines_to_process = SplitWords(lines.begin(), lines.size());
             return *this;
         };
 
-        Qstring &operator()(std::vector<std::string> &lines) {
-        decltype(lines.size()) i;
-            for (i=0; i<lines.size(); ++i) {
-                arr_lines_to_process[i] = std::string_view(lines[i]);
+        Qstring &operator()(const std::vector<std::string> &lines) {
+            auto lines_size = lines.size();
+            decltype(lines_size) i=0;
+            // std::cout << "Operator () called, lines size is: " << lines.size() << std::endl;
+            for (const auto& line : lines) {
+                arr_lines_to_process[i] = std::string_view(line);
+                ++i;
             }
-            lines_to_process = std::span(arr_lines_to_process.begin(), i);
+            // std::cout << "for loop completed " << std::endl;
+            lines_to_process = SplitWords{arr_lines_to_process.begin(), lines_size};
+            // std::cout << "immediately before return "<< lines_size << std::endl;
             return *this;
         };
 
