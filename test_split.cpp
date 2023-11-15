@@ -158,7 +158,7 @@ TEST_CASE("strip test") {
             {"                  ", ""},
             {"", ""}
         };
-        for (const auto& [testValue, correctAnswer] : testValue_correctAnswer) {
+        for (const auto [testValue, correctAnswer] : testValue_correctAnswer) {
             CHECK(correctAnswer == qs(testValue).strip());
         }
     }
@@ -177,7 +177,7 @@ TEST_CASE("join test") {
                 "" 
             },                  std::string("xyzFIRSTxyzxyzxyzSECONDxyz")
         };  // using "xyz" as delimiter
-        const auto& [testValue, correctAnswer] = testValue_correctAnswer;
+        const auto [testValue, correctAnswer] = testValue_correctAnswer;
         CHECK(correctAnswer == qs(testValue).join("xyz"));
     }
     SUBCASE("Join vector of C-string words with C-string delimiter ~") {
@@ -189,7 +189,7 @@ TEST_CASE("join test") {
                 "SECOND", 
             },                  std::string("abc~FIRST~def~SECOND")
         };  // using "xyz" as delimiter
-        const auto& [testValue, correctAnswer] = testValue_correctAnswer;
+        const auto [testValue, correctAnswer] = testValue_correctAnswer;
         CHECK(correctAnswer == qs(testValue).join("~"));
     }
     SUBCASE("Join vector of string words with C-string delimiter") {
@@ -203,16 +203,16 @@ TEST_CASE("join test") {
                 std::string("") 
             },                  std::string("xyzFIRSTxyzxyzxyzSECONDxyz")
         };  // using "xyz" as delimiter
-        const std::tuple& [testValue, correctAnswer] = testValue_correctAnswer;
+        const std::tuple [testValue, correctAnswer] = testValue_correctAnswer;
         auto calc_value = qs(testValue).join("xyz");
-        std::cout << "Returned value in main: " << calc_value << std::endl;
-        std::cout << "correctAnswer: " << correctAnswer << std::endl;
+        // std::cout << "Returned value in main: " << calc_value << std::endl;
+        // std::cout << "correctAnswer: " << correctAnswer << std::endl;
         CHECK(correctAnswer == calc_value);
-        std::cout << "After CHECK" << std::endl;
+        // std::cout << "After CHECK" << std::endl;
     }
 
     SUBCASE("Join vector of string words with string_view delimiter") {
-        std::cout << "NEXT subcase" << std::endl;
+        // std::cout << "NEXT subcase" << std::endl;
         TupleVectorStringString testValue_correctAnswer {
             {
                 std::string(""), 
@@ -223,8 +223,8 @@ TEST_CASE("join test") {
                 std::string("") 
             },                  std::string("xyzFIRSTxyzxyzxyzSECONDxyz")
         };  // using "xyz" as delimiter
-        const std::tuple& [testValue, correctAnswer] = testValue_correctAnswer;
-        CHECK(correctAnswer == qs(testValue).join("xyz"));
+        const std::tuple [testValue, correctAnswer] = testValue_correctAnswer;
+        CHECK(correctAnswer == qs(testValue).join(std::string_view("xyz")));
     }
 
     SUBCASE("Join vector of string words with default delimiter") {
@@ -238,7 +238,7 @@ TEST_CASE("join test") {
                 std::string("") 
             },                  std::string("FIRSTSECOND")
         };  // No delimeter argument is supplied; same as concatenate
-        const std::tuple& [testValue, correctAnswer] = testValue_correctAnswer;
+        const std::tuple [testValue, correctAnswer] = testValue_correctAnswer;
         CHECK(correctAnswer == qs(testValue).join());
     }
 }
