@@ -15,7 +15,7 @@ class Qreader {
     public:
         Qreader(const char* filename) {
             if(!(fin = fopen(filename, "r"))) {
-                // throw std::filesystem::filesystem_error;
+                exit(1);
             }
         };
         ~Qreader() { fclose(fin); };

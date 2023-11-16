@@ -24,32 +24,32 @@
  * }
  *  ...
  */
-#pragma ounce
 #include <string>
+#include <map>
 #include <optional>
 #include <string_view>
 #include "include/qreader.hpp"
 #include "include/split.hpp"
 
-using ValueGivenField = std::unordered_map<std::string, std::string>
-using FieldsGivenObject = std::unordered_map<std::string_view, std::vector<std::string_view>>
-using ObjectName = std::string
-using ObjectHeaderCache = std::string
+using ValueGivenField = std::map<std::string, std::string>;
+using FieldsGivenObject = std::map<std::string_view, std::vector<std::string_view>>;
+using ObjectName = std::string;
+using ObjectHeaderCache = std::string;
 
 class OsiDb {
     private:
-        std::unordered_map<ObjectName, decltype(std::ftell())> object_start;
-        std::unordered_map<ObjectName,ObjectHeaderCache> cache;
+        std::map<ObjectName, long> object_start;
+        std::map<ObjectName,ObjectHeaderCache> cache;
         // fields["analog"] = {"", "recnum", "Indic", "Name", "Key", ...} // analog fields, in order
         FieldsGivenObject fields;
         char line[QLINEMAX];
         Qreader qr;
         std::string_view current_object{""};
-        constexpr std::span<char> to_be_skipped {"\t", "*", "0"};
+        std::array<char, 3> arr_to_be_skipped {'\t', '*', '0'};
+        std::span<char, 3> to_be_skipped({'\t', '*', '0'});
         Qstring qs;
         void mark_object_start() {
-            std::string line;
-            std::getline(fin, line) // skip the DB header
+            qr.read(line); // skip the DB header
             while(qr.read(line)) {
                 if std::any_of(constexpr to_be_skipped.begin(), constexpr to_be_skipped.end(), [line](x) { return line[0] == x; }) {
                     continue;
@@ -78,10 +78,6 @@ class OsiDb {
 
         OsiDb(const std::string_view dump_file_name) {
             qr = Qreader(dump_file_name);
-            if (!fin) {
-                std::cout << "Error reading dump file: " << dump_file_name << std::endl;
-                exit(1);
-            }
             mark_object_start();
         };
 
@@ -115,5 +111,5 @@ class OsiDb {
 
         std::vector<std::string_view> get_fields(const char *object_name) {
             return fields[std::string_view(object_name)];
-        }
-}
+        };
+};
