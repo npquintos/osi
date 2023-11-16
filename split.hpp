@@ -90,6 +90,8 @@ class Qstring {
             }
             else {
                 match = 0;
+                if (line_char == *(pdelim0))
+                    ++match;
             }
         }
         // std::cout << "reached the end" << std::endl;
@@ -142,7 +144,7 @@ class Qstring {
         }
         // std::cout << index << " " << prev_index << " " << delim_length;
         if ((index-prev_index) != match) {
-            split_words[split_words_count] = std::basic_string_view(v_word_start+prev_index, index-prev_index);
+            split_words[split_words_count] = std::basic_string_view(v_word_start+prev_index, index-prev_index-match+1);
             ++split_words_count;
         }
         split_words_result = SplitWords(split_words.begin(), split_words_count);
@@ -172,6 +174,8 @@ class Qstring {
             }
             else {
                 match = 0;
+                if (line_char == *(pdelim0))
+                    ++match;
             }
         }
         // std::cout << index << " " << prev_index << " " << delim_length;
