@@ -7,7 +7,7 @@
 #include <array>
 #include <string_view>
 #include <algorithm>
-#include "include/doctest.h"
+#include <vector>
 
 #define MAX_SPLIT_WORDS 1024
 #define MAX_JOINED_CHARACTERS 2048
@@ -44,7 +44,7 @@ class Qstring {
     SplitWords split_words_result;
     ReadOnlyString strip_default {" \t\n\r"};
     ReadOnlyString &for_stripping {strip_default};
-    ReadOnlyString join_default {""};
+    const ReadOnlyString join_default {""};
     ReadOnlyString joining_word;
     char joined_words[MAX_JOINED_CHARACTERS];
 
@@ -59,7 +59,7 @@ class Qstring {
         int match = 0;
         const auto v_word_start = line_to_process.begin();
         int prev_index = 0;
-        for (auto line_char : line_to_process) {
+        for (const auto line_char : line_to_process) {
             // std::cout << line_char << *(pdelim0+match)<< " ";
             ++index;
             if (line_char == *(pdelim0+match)) {
@@ -122,7 +122,7 @@ class Qstring {
         int match = 0;
         const auto v_word_start = line_to_process.begin()-1;
         int prev_index = 0;
-        for (auto line_char : line_to_process) {
+        for (const auto line_char : line_to_process) {
             ++index;
             if (std::any_of(delim.begin(), delim.end(), [line_char](char x) {return x == line_char; })) {
                 ++match;
@@ -155,12 +155,12 @@ class Qstring {
     const SplitWords &v_split(const ReadOnlyString delim) {
         int index = 0; // tracks where we are in the line to split
         int split_words_count = 0;
-        auto pdelim0 = delim.begin();
+        const auto pdelim0 = delim.begin();
         const int delim_length = delim.length();
         int match = 0;
         const auto v_word_start = line_to_process.begin();
         int prev_index = 0;
-        for (auto line_char : line_to_process) {
+        for (const auto line_char : line_to_process) {
             // std::cout << line_char << *(pdelim0+match)<< " ";
             ++index;
             if (line_char == *(pdelim0+match)) {
@@ -263,11 +263,17 @@ class Qstring {
             }
         }
         // std::cout<< "before move >>" << std::string_view(joined_words, count) << std::endl;
-        return std::move(std::string(joined_words, count));
+        return std::string(joined_words, count);
     };
 
     public:
-        Qstring() {};
+        Qstring() = default;
+        Qstring(const Qstring &other) = delete;
+        Qstring(Qstring &&other) = delete;
+        Qstring &operator =(const Qstring &other) = delete;
+        Qstring &operator =(Qstring &&other) = delete;
+        ~Qstring() = default;
+
         std::array<ReadOnlyString, MAX_SPLIT_WORDS> split_words;
 
         Qstring &operator()(const char* line) {
@@ -275,7 +281,7 @@ class Qstring {
             return *this;
         };
 
-        Qstring &operator()(ReadOnlyString line) {
+        Qstring &operator()(const ReadOnlyString &line) {
             line_to_process = line;
             return *this;
         };
@@ -303,7 +309,7 @@ class Qstring {
                 ++i;
             }
             // std::cout << "for loop completed " << std::endl;
-            lines_to_process = SplitWords{arr_lines_to_process.begin(), lines_size};
+            lines_to_process = SplitWords(arr_lines_to_process.begin(), lines_size);
             // std::cout << "immediately before return "<< lines_size << std::endl;
             return *this;
         };

@@ -1,6 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
-#include "include/split.hpp"
-#include "include/doctest.h"
+#include "../../include/split.hpp"
+#include "../../include/doctest.h"
 
 using TupleVectorStringString = std::tuple< std::vector<std::string>, std::string>;
 

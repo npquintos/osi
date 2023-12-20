@@ -13,11 +13,17 @@ class Qreader {
         int bufRemaining = 0;
         int lineInd = 0;
     public:
-        Qreader(const char* filename) {
+        bool eol = false;
+        Qreader(const char* filename) : eol(false) {
             if(!(fin = fopen(filename, "r"))) {
                 exit(1);
             }
         };
+        Qreader() = default;
+        Qreader(const Qreader &other) = delete;
+        Qreader(Qreader &&other) = delete;
+        Qreader &operator=(const Qreader &other) = delete;
+        Qreader &operator=(Qreader &&other) = delete;
         ~Qreader() { fclose(fin); };
 
         // IMPORTANT: user should declare at his side "char out_buf[QLINEMAX];"
@@ -26,6 +32,7 @@ class Qreader {
             if (!bufRemaining) {
                 bufRemaining = fread(buffer, sizeof(char), QMAXBUFFER, fin);
                 if (!bufRemaining) {
+                    eol = true;
                     return false;
                 }
             }
@@ -39,5 +46,14 @@ class Qreader {
             ++bufInd;
             out_buf[out_index] = '\0';
             return true;
+        };
+        
+        void seek(const long offset) {
+            std::fseek(fin, offset, SEEK_SET);
+            eol = false;
+        };
+
+        long tell(void) const {
+            return std::ftell(fin);
         };
 };

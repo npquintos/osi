@@ -39,25 +39,30 @@ using ObjectHeaderCache = std::string;
 class OsiDb {
     private:
         std::map<ObjectName, long> object_start;
-        std::map<ObjectName,ObjectHeaderCache> cache;
+        std::map<ObjectName, ObjectHeaderCache> cache;
         // fields["analog"] = {"", "recnum", "Indic", "Name", "Key", ...} // analog fields, in order
         FieldsGivenObject fields;
         char line[QLINEMAX];
         Qreader qr;
         std::string_view current_object{""};
-        std::array<char, 3> arr_to_be_skipped {'\t', '*', '0'};
-        std::span<char, 3> to_be_skipped({'\t', '*', '0'});
+        static constexpr std::array<char, 3> to_be_skipped{'\t', '*', '0'};
         Qstring qs;
         void mark_object_start() {
             qr.read(line); // skip the DB header
             while(qr.read(line)) {
-                if std::any_of(constexpr to_be_skipped.begin(), constexpr to_be_skipped.end(), [line](x) { return line[0] == x; }) {
-                    continue;
+                bool should_skip = false;
+                for (const auto &x : to_be_skipped) {
+                    if (line[0] == x) {
+                        should_skip = true;
+                        break;
+                    }
                 }
-                if (line) {
+                if (should_skip)
+                    continue;
+                if (line[0]) {
                     auto line_vector = qs(line).split();
-                    ObjectName object_name = line_vector[1];
-                    std::getline(fin, line);
+                    ObjectName object_name{line_vector[1]};
+                    qr.read(line);
                     cache[object_name] = line;
                     line_vector = qs(cache[object_name]).split();
                     auto n = line_vector.size();
@@ -65,41 +70,44 @@ class OsiDb {
                     for(decltype(n) i=2; i<n; ++i) {
                         fields[object_name].push_back(line_vector[i]);
                     }
-                    object_start[object_name] = std::ftell();
+                    object_start[object_name] = qr.tell();
                 }
             }
         };
 
     public:
         std::optional<ValueGivenField> result;
-        OsiDb(const char* dump_file_name) {
-            OsidDb(std::string_view(dump_file_name));
+        OsiDb(const char* dump_file_name) :
+            qr{Qreader(dump_file_name)}
+        {
+            mark_object_start();
         };
 
-        OsiDb(const std::string_view dump_file_name) {
-            qr = Qreader(dump_file_name);
+        OsiDb(const std::string dump_file_name) :
+            qr{Qreader(dump_file_name.c_str())}
+        {
             mark_object_start();
         };
 
         bool seek(const char *object_name) {
-            return seek(std::string_view{object_name});
+            return seek(std::string{object_name});
         };
 
-        bool seek(std::string_view object_name) {
+        bool seek(const std::string &object_name) {
             auto it = object_start.find(object_name);
             if (it != object_start.end()) {
-                std::fseek(object_start[object_name]);
+                qr.seek(object_start[object_name]);
                 current_object = object_name;
                 return true;
             }
             return false;
         };
 
-        std::optional<ValueGivenField> &next() {
+        std::optional<ValueGivenField> next() {
             result.reset();
-            while (getline(fin, line) && line[0] == "*");
-            if (!line || line[0] == "0") {
-                return std::nullopt
+            while (qr.read(line) && *line == '*');
+            if (qr.eol || *line == '0') {
+                return std::nullopt;
             }
             auto line_vector = qs(line).split();
             auto n = line_vector.size();
