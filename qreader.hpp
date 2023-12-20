@@ -12,6 +12,7 @@ class Qreader {
         int bufInd = 0;
         int bufRemaining = 0;
         int lineInd = 0;
+        long line_count = 0;
     public:
         bool eol = false;
         Qreader(const char* filename) : eol(false) {
@@ -45,15 +46,26 @@ class Qreader {
             --bufRemaining;
             ++bufInd;
             out_buf[out_index] = '\0';
+            ++line_count;
             return true;
         };
         
+        // offset is the number of lines from beginning
         void seek(const long offset) {
-            std::fseek(fin, offset, SEEK_SET);
+            long end_line = offset - line_count;
+            if (end_line < 0) {
+                end_line = offset;
+                std::fseek(fin, 0, SEEK_SET);
+            }
+            for (int i=0; i<end_line; ++i) {
+                read(line);
+            }
+            line_count = offset;
             eol = false;
         };
 
+        // this is the number of lines from the beginning
         long tell(void) const {
-            return std::ftell(fin);
+            return line_count;
         };
 };

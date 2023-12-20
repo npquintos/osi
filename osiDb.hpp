@@ -31,23 +31,31 @@
 #include "include/qreader.hpp"
 #include "include/split.hpp"
 
-using ValueGivenField = std::map<std::string, std::string>;
-using FieldsGivenObject = std::map<std::string_view, std::vector<std::string_view>>;
-using ObjectName = std::string;
-using ObjectHeaderCache = std::string;
+using FtellLocation = long;
+using SplitRecordFields = std::span<std::string_view>;
 
+// sz should be something like Emap::total_objects
+// or in general <db name>::total_objects
+// where 'db name' is Capitalized
+// e.g. db = OsiDb<Emap::total_objcts>("emap.dat");
+template <size sz>
 class OsiDb {
     private:
-        std::map<ObjectName, long> object_start;
-        std::map<ObjectName, ObjectHeaderCache> cache;
-        // fields["analog"] = {"", "recnum", "Indic", "Name", "Key", ...} // analog fields, in order
-        FieldsGivenObject fields;
+        // index would be something like Opennet_breaker::no
+        // or in general, <DB name>_<object name>::no
+        // DB name is capitalized, all the rest lower case
+        // so, if this is emap, object start for emap_switch
+        // would be object_start[Emap_emap_switch::no] and
+        // you should do std::fseek(object_start[Emap_emap_switch::no])
+        // prior to reading.
+        FtellLocation object_start[sz+1];
         char line[QLINEMAX];
         Qreader qr;
         std::string_view current_object{""};
-        static constexpr std::array<char, 3> to_be_skipped{'\t', '*', '0'};
+        static constexpr std::array<char, 3> to_be_skipped{'\t', '*', '0', ' '};
         Qstring qs;
         void mark_object_start() {
+            int count = 1;
             qr.read(line); // skip the DB header
             while(qr.read(line)) {
                 bool should_skip = false;
@@ -59,19 +67,13 @@ class OsiDb {
                 }
                 if (should_skip)
                     continue;
-                if (line[0]) {
-                    auto line_vector = qs(line).split();
-                    ObjectName object_name{line_vector[1]};
-                    qr.read(line);
-                    cache[object_name] = line;
-                    line_vector = qs(cache[object_name]).split();
-                    auto n = line_vector.size();
-                    fields[object_name] = {std::string_view("recnum")};
-                    for(decltype(n) i=2; i<n; ++i) {
-                        fields[object_name].push_back(line_vector[i]);
-                    }
-                    object_start[object_name] = qr.tell();
+                if (!line[0]) {
+                    continue;
                 }
+                // at this point you are at the object header
+                qr.read(line); // skip the comment
+                object_start[count] = qr.tell();
+                ++count;
             }
         };
 
