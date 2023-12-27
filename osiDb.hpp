@@ -30,9 +30,23 @@
 #include <string_view>
 #include "include/qreader.hpp"
 #include "include/split.hpp"
+#include "include/statemachine_enum.hpp"
 
 using FtellLocation = long;
 using SplitRecordFields = std::span<std::string_view>;
+using Cargo = class {
+                    char line[QLINEMAX];
+                    Qreader qr;
+              };
+
+namespace Prelim {
+    enum state {seek_object_start, process_object_header, seek_object_end, end};
+}
+
+namespace RunTime {
+    enum state {seek_object_start, process_object_records, end};
+}
+
 
 // sz should be something like Emap::total_objects
 // or in general <db name>::total_objects
@@ -43,51 +57,70 @@ class OsiDb {
     private:
         // index would be something like Opennet_breaker::no
         // or in general, <DB name>_<object name>::no
-        // DB name is capitalized, all the rest lower case
+        // DB name is capitalized, all the ressstsstat lower case
         // so, if this is emap, object start for emap_switch
         // would be object_start[Emap_emap_switch::no] and
         // you should do std::fseek(object_start[Emap_emap_switch::no])
         // prior to reading.
         FtellLocation object_start[sz+1];
-        char line[QLINEMAX];
-        Qreader qr;
-        std::string_view current_object{""};
-        static constexpr std::array<char, 3> to_be_skipped{'\t', '*', '0', ' '};
         Qstring qs;
-        void mark_object_start() {
-            int count = 1;
-            qr.read(line); // skip the DB header
-            while(qr.read(line)) {
-                bool should_skip = false;
-                for (const auto &x : to_be_skipped) {
-                    if (line[0] == x) {
-                        should_skip = true;
-                        break;
-                    }
-                }
-                if (should_skip)
-                    continue;
-                if (!line[0]) {
-                    continue;
-                }
-                // at this point you are at the object header
-                qr.read(line); // skip the comment
-                object_start[count] = qr.tell();
-                ++count;
+        class Cargo {
+            char line[QLINEMAX];
+            Qreader qr;
+            int obj_no;
+        } cargo;
+
+        // This procedure assumes that pointer is AFTER the first
+        // line which is pointing to the database header. Hence,
+        // you need to read a line first after opening the dump file
+        // before passing the file pointer to this procedure.
+        StateAndData<Cargo> seek_object_start(Cargo cargo) {
+            while(cargo.qr.read(line)) {
+                if (line[0] == '*') continue;
+                if (line[0] == '0') break;
+                return std::make_tuple(Prelim::process_object_header, cargo);
             }
+            return std::make_tuple(Prelim::end, cargo);
         };
 
+        StateAndData<Cargo> process_object_header(Cargo cargo) {
+            // cargo.line contains object header with number
+            ++cargo.obj_no;
+            cargo.qr.read(line); // skip 2 lines so that tell would
+            cargo.qr.read(line); // point to the first record
+            object_start[cargo.obj_no] = qr.tell();
+            return std::make_tuple(Prelim::seek_object_end, cargo)
+
+        };
+
+        StateAndData<Cargo> seek_object_end(Cargo cargo) {
+            while(cargo.qr.read(line)) {
+                if (line[0] == '0') break;
+            }
+            return std::make_tuple(Prelim::seek_object_start, cargo);
+        };
+        
+        void mark_object_start() {
+            StateMachine<Cargo, 3> sm = StateMachine<Cargo, 3>();
+            sm.add(Prelim::seek_object_start, seek_object_start);
+            sm.add(Prelim::process_object_header, process_object_header);
+            sm.add(Prelim::seek_object_end, seek_object_end);
+            sm.add(Prelim::end, seek_object_end, true);
+            cargo.qr.read(line); // skip DB header
+            sm.run(Prelim::seek_object_start, cargo);
+        };
+xxxxxxxxxxxxxxxxx stopped here
     public:
         std::optional<ValueGivenField> result;
-        OsiDb(const char* dump_file_name) :
-            qr{Qreader(dump_file_name)}
+        OsiDb(const char* dump_file_name)
         {
+            cargo.qr = Qreader(dump_file_name);
             mark_object_start();
         };
 
         OsiDb(const std::string dump_file_name) :
-            qr{Qreader(dump_file_name.c_str())}
         {
+            cargo.qr = Qreader(dump_file_name.c_str());
             mark_object_start();
         };
 

@@ -4,6 +4,7 @@
 #include<filesystem>
 #include<cstring>
 #include <limits.h>
+// #define QMAXBUFFER 5 // chosen for performance
 #define QMAXBUFFER 10240 // chosen for performance
 #define QLINEMAX 1024 // assumes that one line is less than 1023 chars
 
