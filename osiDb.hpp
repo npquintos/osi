@@ -64,6 +64,7 @@ class OsiDb {
         // prior to reading.
         FtellLocation object_start[sz+1];
         Qstring qs;
+        int current_object_no;
         class Cargo {
             char line[QLINEMAX];
             Qreader qr;
@@ -124,15 +125,10 @@ xxxxxxxxxxxxxxxxx stopped here
             mark_object_start();
         };
 
-        bool seek(const char *object_name) {
-            return seek(std::string{object_name});
-        };
-
-        bool seek(const std::string &object_name) {
-            auto it = object_start.find(object_name);
-            if (it != object_start.end()) {
+        bool seek(int object_no) {
+            if (object_start.size() < object_no+1) {
                 qr.seek(object_start[object_name]);
-                current_object = object_name;
+                current_object_no = object_no;
                 return true;
             }
             return false;
@@ -147,7 +143,7 @@ xxxxxxxxxxxxxxxxx stopped here
             auto line_vector = qs(line).split();
             auto n = line_vector.size();
             for(decltype(n) i=1; i<n; ++i) {
-                result[fields[current_object][i]] = line_vector[i];
+                result[fields[current_object_no][i]] = line_vector[i];
             }
             return result;
         };
