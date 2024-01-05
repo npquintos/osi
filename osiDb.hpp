@@ -112,7 +112,7 @@ class OsiDb {
         };
 xxxxxxxxxxxxxxxxx stopped here
     public:
-        std::optional<ValueGivenField> result;
+        std::optional<std::span<std::string_view>> result;
         OsiDb(const char* dump_file_name)
         {
             cargo.qr = Qreader(dump_file_name);
@@ -134,21 +134,13 @@ xxxxxxxxxxxxxxxxx stopped here
             return false;
         };
 
-        std::optional<ValueGivenField> next() {
-            result.reset();
+        std::optional<std::span<std::string_view>> next() {
             while (qr.read(line) && *line == '*');
             if (qr.eol || *line == '0') {
-                return std::nullopt;
+                return {};
             }
-            auto line_vector = qs(line).split();
-            auto n = line_vector.size();
-            for(decltype(n) i=1; i<n; ++i) {
-                result[fields[current_object_no][i]] = line_vector[i];
-            }
+            result = qs(line).split("\t");
             return result;
         };
 
-        std::vector<std::string_view> get_fields(const char *object_name) {
-            return fields[std::string_view(object_name)];
-        };
 };
